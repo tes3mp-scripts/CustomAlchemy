@@ -517,6 +517,7 @@ function CustomAlchemy.brewPotions(pid, name)
     else
         CustomAlchemy.failure(pid, CustomAlchemy.config.fail.messageTooMany)
         CustomAlchemy.cancel(pid)
+        CustomAlchemy.updateContainer(pid)
     end
 end
 
