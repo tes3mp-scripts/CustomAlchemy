@@ -1,8 +1,10 @@
 **customAlchemy** reimpliments vanilla alchemy mechanics to allow batch potion brewing, server side customization and improvement of server performance.
 
+Requires [DataManager](https://github.com/tes3mp-scripts/DataManager) and [ContainerFramework](https://github.com/tes3mp-scripts/ContainerFramework)!
+
 Most of the formulas are contained in `formulas.lua` for (relatively) easy access.
 
-You can find the configuration file in `data/custom/--config_CustomAlchemy.json`.
+You can find the configuration file in `data/custom/__config_CustomAlchemy.json`.
 * `menu` is a list of all GUI ids used by customAlchemy. Edit this if some other scripts happen to use the same ones.
 * `fail`
   * `sound` plays when potion brewing is failed.
@@ -26,7 +28,8 @@ You can find the configuration file in `data/custom/--config_CustomAlchemy.json`
 * `ingredients` necessary data about all the ingredients. By default only contains ingredients from the original game and the expansions, has to be edited to accomodate for mods. Can also be used to make custom ingredients. For information about numeric values consult the table below.
 * `effects` necessary data for magical effects. For information about numeric values consult the table below.
 
-==Potion effects==
+Potion effects
+---
 
     WaterBreathing = 0,
     SwiftSwim = 1,
@@ -177,7 +180,8 @@ You can find the configuration file in `data/custom/--config_CustomAlchemy.json`
     SummonCreature05 = 142
 
 
-==Skills==
+Skills
+---
 
     0 = Block
     1 = Armorer
@@ -208,7 +212,8 @@ You can find the configuration file in `data/custom/--config_CustomAlchemy.json`
     26 = Handtohand
 
 
-==Attributes==
+Attributes
+---
 
     0 = Strength
     1 = Intelligence
