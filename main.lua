@@ -33,6 +33,13 @@ function CustomAlchemy.updatePlayerSpellbook(pid)
     Players[pid]:LoadSpellbook()
 end
 
+function CustomAlchemy.sendSpell(pid, id, action)
+    tes3mp.ClearSpellbookChanges(pid)
+    tes3mp.SetSpellbookChangesAction(pid, action)
+    tes3mp.AddSpell(pid, id)
+    tes3mp.SendSpellbookChanges(pid)
+end
+
 
 function CustomAlchemy.createAlchemyContainerRecord()
     local recordStore = RecordStores[CustomAlchemy.config.container.type]
@@ -211,23 +218,27 @@ function CustomAlchemy.filterContainerIngredients(pid, objectIndex)
 end
 
 
-function CustomAlchemy.updateContainerBurden(pid)
-    local recordStore = RecordStores["spell"]
+function CustomAlchemy.applyContainerBurden(pid, readd)
     local id = CustomAlchemy.data.burdenId[pid]
 
     tableHelper.removeValue(Players[pid].data.spellbook, id)
-    CustomAlchemy.updatePlayerSpellbook(pid)
+    CustomAlchemy.sendSpell(pid, id, enumerations.spellbook.REMOVE)
 
-    tableHelper.removeValue(Players[pid].generatedRecordsReceived, id)
-    recordStore:LoadGeneratedRecords(pid, recordStore.data.generatedRecords, {id})
+    if readd then
+        local recordStore = RecordStores["spell"]
+        tableHelper.removeValue(Players[pid].generatedRecordsReceived, id)
+        recordStore:LoadGeneratedRecords(pid, recordStore.data.generatedRecords, {id})
 
-    table.insert(Players[pid].data.spellbook, id)
-    CustomAlchemy.updatePlayerSpellbook(pid)
+        table.insert(Players[pid].data.spellbook, id)
+        CustomAlchemy.sendSpell(pid, id, enumerations.spellbook.ADD)
+    end
+
+    tableHelper.cleanNils(Players[pid].data.spellbook)
 end
 
 function CustomAlchemy.createContainerBurden(pid)
     local recordStore = RecordStores["spell"]
-    local id = CustomAlchemy.config.burden.id .. Players[pid].accountName
+    local id = recordStore:GenerateRecordId()--CustomAlchemy.config.burden.id .. Players[pid].accountName
     CustomAlchemy.data.burdenId[pid] = id
 
     local recordTable = {
@@ -250,10 +261,12 @@ function CustomAlchemy.createContainerBurden(pid)
     Players[pid]:AddLinkToRecord("spell", id)
     recordStore:Save()
 
-    CustomAlchemy.updateContainerBurden(pid)
+    --recordStore:LoadGeneratedRecords(pid, recordStore.data.generatedRecords, {id})
+    --table.insert(Players[pid].data.spellbook, id)
+    --CustomAlchemy.sendSpell(pid, id, enumerations.spellbook.ADD)
 end
 
-function CustomAlchemy.applyContainerBurden(pid)
+function CustomAlchemy.updateContainerBurden(pid)
     local weight = math.ceil(CustomAlchemy.getContainerWeight(pid))
 
     local recordStore = RecordStores["spell"]
@@ -262,23 +275,21 @@ function CustomAlchemy.applyContainerBurden(pid)
     recordStore.data.generatedRecords[id].effects[1].magnitudeMin = weight
     recordStore.data.generatedRecords[id].effects[1].magnitudeMax = weight
 
-    CustomAlchemy.updateContainerBurden(pid)
+    CustomAlchemy.applyContainerBurden(pid, weight > 0)
 end
 
 function CustomAlchemy.destroyContainerBurden(pid)
-    local recordStore = RecordStores["spell"]
+    CustomAlchemy.applyContainerBurden(pid, false)
+
     local id = CustomAlchemy.data.burdenId[pid]
     CustomAlchemy.data.burdenId[pid] = nil
 
+    local recordStore = RecordStores["spell"]
     recordStore.data.generatedRecords[id] = nil
 
     recordStore:RemoveLinkToPlayer(id, Players[pid])
     Players[pid]:RemoveLinkToRecord("spell", id)
     recordStore:Save()
-
-    Players[pid]:CleanSpellbook()
-
-    CustomAlchemy.updatePlayerSpellbook(pid)
 end
 
 
@@ -553,6 +564,10 @@ function CustomAlchemy.OnServerPostInit()
 end
 
 function CustomAlchemy.OnServerExit(eventStatus)
+    for pid, player in pairs(Players) do
+        CustomAlchemy.destroyContainer(pid)
+        CustomAlchemy.destroyContainerBurden(pid)
+    end
     CustomAlchemy.saveData()
 end
 

@@ -19,7 +19,8 @@ local defaultConfig = {
         ["message"] = "You have sucessfully brewed %s potions!"
     },
     ["burden"] = {
-        ["id"] = "customAlchemy_burden_"
+        ["id"] = "customAlchemy_burden_",
+        ["name"] = "Weight of ingredients"
     },
     ["container"] = {
         ["baseId"] = "dead rat",

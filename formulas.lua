@@ -24,15 +24,15 @@ function Formulas.getRandom()
 end
 
 function Formulas.getAlchemy(pid)
-    return Players[pid].data.skills.Alchemy
+    return Players[pid].data.skills.Alchemy.base + Players[pid].data.skills.Alchemy.damage
 end
 
 function Formulas.getIntelligence(pid)
-    return Players[pid].data.attributes.Intelligence
+    return Players[pid].data.attributes.Intelligence.base + Players[pid].data.attributes.Intelligence.damage
 end
 
 function Formulas.getLuck(pid)
-    return Players[pid].data.attributes.Luck
+    return Players[pid].data.attributes.Luck.base + Players[pid].data.attributes.Luck.damage
 end
 
 
