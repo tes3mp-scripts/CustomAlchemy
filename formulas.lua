@@ -3,23 +3,15 @@ local Formulas = {
     ALEMBIC = 2,
     CALCINATOR = 3,
     RETORT = 4,
-    
+
     fPotionStrengthMult = 0.5,
     fPotionT1DurMult = 0.5,
     fPotionT1MagMult = 1.5,
     iAlchemyMod = 2,
-    
-    maxPotency = 100
 }
 
 
 function Formulas.getRandom()
-    math.randomseed(os.time())
-    
-    math.random()
-    math.random()
-    math.random()
-    
     return math.random()
 end
 
@@ -64,10 +56,17 @@ function Formulas.makeAlchemyStatus(pid, apparatuses, ingredients)
     return status
 end
 
+function Formulas.getPotionChance(status)
+    return math.min(
+        ( status.alchemy + 0.1 * (status.intelligence + status.luck) ) * 0.01,
+        1
+    )
+end
+
 function Formulas.getPotionPotency(status)
     local potency = status.alchemy + 0.1 * ( status.intelligence + status.luck )
     potency = potency * status.mortar * Formulas.fPotionStrengthMult
-    
+
     return potency
 end
 
@@ -99,7 +98,7 @@ function Formulas.getPotionIcon(status)
 end
 
 function Formulas.getPotionModel(status)
-    local tier = math.floor(status.potency/18)
+    local tier = math.floor(status.potency / 18)
     if tier >= 4 then
         return "m\\misc_potion_exclusive_01.nif"
     elseif tier == 3 then
@@ -112,27 +111,40 @@ function Formulas.getPotionModel(status)
     return "m\\misc_potion_bargain_01.nif"
 end
 
-
+local numericsLimit = 100
 function Formulas.getPotionCount(status, ingredientCount)
     local n = ingredientCount
-    local roll = Formulas.getRandom()
-    local p = status.potency / Formulas.maxPotency
-    
-    local pn = (1-p)^n
-    local probability = pn
-    local n_choose_i = 1
-    local dp = p/(1-p)
-    
-    for k = 1,n do
-        n_choose_i = n_choose_i * (n - k + 1) / k
-        pn = pn * dp
-        probability = probability + n_choose_i * pn
-        if probability >= roll then
-            
-            return k-1
+    if n > numericsLimit then
+        local sum = 0
+        local count = math.ceil(n / numericsLimit)
+        while n > 0 do
+            sum = sum + Formulas.getPotionCount(status, math.min(n, numericsLimit))
+            n = n - numericsLimit
         end
+        return sum
     end
-    
+    local roll = Formulas.getRandom()
+    local p = Formulas.getPotionChance(status)
+    if p == 0 then
+        return 0
+    end
+    if p == 1 then
+        return n
+    end
+
+    local total_probability = 0
+    local probability = (1-p)^n
+    local dp = 1
+
+    for k = 0, n do
+        total_probability = total_probability + probability
+        if total_probability >= roll then
+            return k
+        end
+        dp = ( (n - k) / (k + 1) ) * ( p / (1 - p) )
+        probability = probability * dp
+    end
+
     return n
 end
 
@@ -140,9 +152,9 @@ function Formulas.getEffectMagnitude(status, effect)
     if not effect.hasMagnitude then
         return 0
     end
-    
+
     local magnitude = status.potency / Formulas.fPotionT1MagMult / effect.cost
-    
+
     if effect.negative then
         if status.alembic ~= 0 then
             if status.calcinator ~= 0 then
@@ -171,7 +183,7 @@ function Formulas.getEffectMagnitude(status, effect)
             end
         end
     end
-    
+
     return magnitude
 end
 
@@ -179,9 +191,9 @@ function Formulas.getEffectDuration(status, effect)
     if not effect.hasDuration then
         return 0
     end
-    
+
     local duration = status.potency / Formulas.fPotionT1DurMult / effect.cost
-    
+
     if effect.negative then
         if status.alembic ~= 0 then
             if status.calcinator ~= 0 then
@@ -210,9 +222,8 @@ function Formulas.getEffectDuration(status, effect)
             end
         end
     end
-    
+
     return duration
 end
-
 
 return Formulas

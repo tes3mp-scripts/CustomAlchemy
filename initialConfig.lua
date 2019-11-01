@@ -1,17 +1,20 @@
-local defaultConfig = {
+local keyOrder = {
+    "progressSkill","potionEffectTreshold", "maximumIngredientCount",
+    "menu", "fail", "success", "burden", "container",
+    "apparatuses", "ingredients", "effects"
+}
+local default = {
+    progressSkill = true,
     ["menu"] = {
-        ["apparatus_id"] = 867001,
-        ["potionName_id"] = 867002,
-        ["success_id"] = 867003,
-        ["failure_id"] = 867003,
-        ["apparatusButtons"] = "Brew;Add ingredient;Cancel",
+        ["apparatusButtons"] = { "Brew", "Add ingredient", "Cancel" },
         ["nameLabel"] = "Name your potions:"
     },
     ["fail"] = {
         ["sound"] = "fx/item/potionFAIL.wav",
         ["messageAttempt"] = "You failed to brew anything!",
         ["messageTooMany"] = "Too many ingredients!",
-        ["messageUseless"] = "This potion is useless!"
+        ["messageUseless"] = "This potion is useless!",
+        ["messageMortarRequired"] = "You can't brew potions without a mortar!",
     },
     ["success"] = {
         ["sound"] = "fx/item/potion.wav",
@@ -19,7 +22,6 @@ local defaultConfig = {
         ["message"] = "You have sucessfully brewed %s potions!"
     },
     ["burden"] = {
-        ["id"] = "customAlchemy_burden_",
         ["name"] = "Weight of ingredients"
     },
     ["container"] = {
@@ -1801,4 +1803,4 @@ local defaultConfig = {
     }
 }
 
-return defaultConfig
+return { default = default, keyOrder = keyOrder}

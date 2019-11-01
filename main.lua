@@ -1,13 +1,17 @@
-local CustomAlchemy = {}
+CustomAlchemy = {}
 
 local Formulas = require("custom.CustomAlchemy.formulas")
 
 
 CustomAlchemy.scriptName = "CustomAlchemy"
 
-CustomAlchemy.defaultConfig = require("custom.CustomAlchemy.defaultConfig")
+CustomAlchemy.initialConfig = require("custom.CustomAlchemy.initialConfig")
 
-CustomAlchemy.config = DataManager.loadConfiguration(CustomAlchemy.scriptName, CustomAlchemy.defaultConfig)
+CustomAlchemy.config = DataManager.loadConfiguration(
+    CustomAlchemy.scriptName,
+    CustomAlchemy.initialConfig.default,
+    CustomAlchemy.initialConfig.keyOrder
+)
 tableHelper.fixNumericalKeys(CustomAlchemy.config)
 
 
@@ -18,6 +22,8 @@ CustomAlchemy.defaultData = {
 }
 
 CustomAlchemy.uniqueIndexCache = {}
+
+CustomAlchemy.skillId = tes3mp.GetSkillId("Alchemy")
 
 
 function CustomAlchemy.loadData()
@@ -51,7 +57,7 @@ function CustomAlchemy.createAlchemyContainerRecord()
         recordStore:Save()
     end
 
-    if CustomAlchemy.data.recordId == nil then
+    if CustomAlchemy.data.recordId == nil or ContainerFramework.getRecordData(CustomAlchemy.data.recordId) == nil then
         CustomAlchemy.data.recordId = ContainerFramework.createRecord(
             CustomAlchemy.config.container.refId,
             CustomAlchemy.config.container.packetType
@@ -81,11 +87,15 @@ function CustomAlchemy.setContainerInventory(pid, inventory)
     ContainerFramework.setInventory(instanceId, inventory)
 end
 
+function CustomAlchemy.refreshUI(pid)
+    logicHandler.RunConsoleCommandOnPlayer(pid, "togglemenus", false)
+    logicHandler.RunConsoleCommandOnPlayer(pid, "togglemenus", false)
+end
+
 function CustomAlchemy.updateContainer(pid)
     local instanceId = CustomAlchemy.getContainerInstanceId(pid)
     ContainerFramework.updateInventory(pid, instanceId)
-    logicHandler.RunConsoleCommandOnPlayer(pid, "togglemenus", false)
-    logicHandler.RunConsoleCommandOnPlayer(pid, "togglemenus", false)
+    CustomAlchemy.refreshUI(pid)
     CustomAlchemy.activateContainer(pid)
 end
 
@@ -219,6 +229,10 @@ end
 
 
 function CustomAlchemy.applyContainerBurden(pid, readd)
+    if readd == nil then
+        readd = false
+    end
+
     local id = CustomAlchemy.data.burdenId[pid]
 
     tableHelper.removeValue(Players[pid].data.spellbook, id)
@@ -227,6 +241,7 @@ function CustomAlchemy.applyContainerBurden(pid, readd)
     if readd then
         local recordStore = RecordStores["spell"]
         tableHelper.removeValue(Players[pid].generatedRecordsReceived, id)
+        tableHelper.cleanNils(Players[pid].generatedRecordsReceived)
         recordStore:LoadGeneratedRecords(pid, recordStore.data.generatedRecords, {id})
 
         table.insert(Players[pid].data.spellbook, id)
@@ -238,7 +253,7 @@ end
 
 function CustomAlchemy.createContainerBurden(pid)
     local recordStore = RecordStores["spell"]
-    local id = recordStore:GenerateRecordId()--CustomAlchemy.config.burden.id .. Players[pid].accountName
+    local id = recordStore:GenerateRecordId()
     CustomAlchemy.data.burdenId[pid] = id
 
     local recordTable = {
@@ -260,10 +275,6 @@ function CustomAlchemy.createContainerBurden(pid)
     recordStore:AddLinkToPlayer(id, Players[pid])
     Players[pid]:AddLinkToRecord("spell", id)
     recordStore:Save()
-
-    --recordStore:LoadGeneratedRecords(pid, recordStore.data.generatedRecords, {id})
-    --table.insert(Players[pid].data.spellbook, id)
-    --CustomAlchemy.sendSpell(pid, id, enumerations.spellbook.ADD)
 end
 
 function CustomAlchemy.updateContainerBurden(pid)
@@ -295,6 +306,10 @@ end
 
 function CustomAlchemy.isApparatus(refId)
     return CustomAlchemy.config.apparatuses[refId] ~= nil
+end
+
+function CustomAlchemy.isMortar(refId)
+    return CustomAlchemy.config.apparatuses[refId] ~= nil and CustomAlchemy.config.apparatuses[refId].type == 1
 end
 
 function CustomAlchemy.getApparatus(refId)
@@ -366,7 +381,11 @@ end
 
 
 function CustomAlchemy.failure(pid, label)
-    tes3mp.MessageBox(pid, CustomAlchemy.config.menu.failure_id, label)
+    GuiFramework.MessageBox({
+        pid = pid,
+        name = 'CustomAlchemy_failure',
+        label = label
+    })
     tes3mp.PlaySpeech(pid, CustomAlchemy.config.fail.sound)
 end
 
@@ -378,11 +397,23 @@ function CustomAlchemy.success(pid,count)
         message = string.format(CustomAlchemy.config.success.message, count)
     end
 
-    tes3mp.MessageBox(pid, CustomAlchemy.config.menu.success_id, message)
     tes3mp.PlaySpeech(pid, CustomAlchemy.config.success.sound)
+    GuiFramework.MessageBox({
+        pid = pid,
+        name = 'CustomAlchemy_success',
+        message = message
+    })
 end
 
 function CustomAlchemy.brewPotions(pid, name)
+    local player_apparatuses = CustomAlchemy.determineApparatuses(pid)
+    --check if the player has a mortar
+    if player_apparatuses[1] == 0 then
+        CustomAlchemy.failure(pid, CustomAlchemy.config.fail.messageMortarRequired)
+        CustomAlchemy.cancel(pid)
+        return
+    end
+
     local containerInventory = CustomAlchemy.getContainerInventory(pid)
 
     --if there are too many different ingredients (>4 by default), we can't brew a potion
@@ -426,17 +457,22 @@ function CustomAlchemy.brewPotions(pid, name)
 
         --removing ingredients that we ended up using
         for _, item in pairs(containerInventory) do
-            inventoryHelper.removeItem(containerInventory, item.refId, min_ingredient_count, item.charge, item.enchantmentCharge, item.soul)
+            inventoryHelper.removeItem(
+                containerInventory,
+                item.refId,
+                min_ingredient_count,
+                item.charge,
+                item.enchantmentCharge,
+                item.soul
+            )
         end
 
         --return whatever is left to the player
         CustomAlchemy.emptyContainer(pid)
 
-        local player_apparatuses = CustomAlchemy.determineApparatuses(pid)
-
         local status = Formulas.makeAlchemyStatus(pid, player_apparatuses, potion_ingredients)
 
-        local potion_count = Formulas.getPotionCount(status,min_ingredient_count)
+        local potion_count = Formulas.getPotionCount(status, min_ingredient_count)
 
         local recordTable = {
             name = name,
@@ -515,10 +551,16 @@ function CustomAlchemy.brewPotions(pid, name)
             tes3mp.AddItemChange(pid, potionId, potion_count, -1, -1, "")
             tes3mp.SendInventoryChanges(pid)
 
-
-            CustomAlchemy.success(pid,potion_count)
+            CustomAlchemy.success(pid, potion_count)
 
             CustomAlchemy.updateContainer(pid)
+
+            -- Improve alchemy skill
+            if CustomAlchemy.config.progressSkill then
+                LevelingFramework.progressSkill(pid, "Alchemy", 2, potion_count)
+                Players[pid]:LoadSkills()
+                Players[pid]:LoadLevel()
+            end
         else
 
            CustomAlchemy.failure(pid, CustomAlchemy.config.fail.messageUseless)
@@ -538,26 +580,49 @@ end
 
 function CustomAlchemy.cancel(pid)
     CustomAlchemy.emptyContainer(pid)
+    CustomAlchemy.refreshUI(pid)
 end
 
-
-function CustomAlchemy.getApparatusGUIId()
-    return CustomAlchemy.config.menu.apparatus_id
-end
-
-function CustomAlchemy.getPotionNameGUIId()
-    return CustomAlchemy.config.menu.potionName_id
-end
-
+--UI actions
 function CustomAlchemy.showApparatusGUI(pid)
-    tes3mp.CustomMessageBox(pid, CustomAlchemy.getApparatusGUIId(), "", CustomAlchemy.config.menu.apparatusButtons)
+    GuiFramework.CustomMessageBox({
+        pid = pid,
+        name = "CustomAlchemy_apparatus",
+        buttons = CustomAlchemy.config.menu.apparatusButtons,
+        returnValues = { "brew", "add", "cancel" },
+        callback = CustomAlchemy.processApparatusGUI
+    })
 end
+
+function CustomAlchemy.processApparatusGUI(pid, name, input, data, parameters)
+    if data == "brew" then
+        CustomAlchemy.showPotionNameGUI(pid)
+    elseif data == "add" then
+        CustomAlchemy.addIngredient(pid)
+    elseif data == "cancel" then
+        CustomAlchemy.cancel(pid)
+    end
+end
+
 
 function CustomAlchemy.showPotionNameGUI(pid)
-    tes3mp.InputDialog(pid, CustomAlchemy.getPotionNameGUIId(), CustomAlchemy.config.menu.nameLabel, "")
+    GuiFramework.InputDialog({
+        pid = pid,
+        name = "CustomAlchemy_potionName",
+        label = CustomAlchemy.config.menu.nameLabel,
+        callback = CustomAlchemy.processPotionNameGUI
+    })
 end
 
+function CustomAlchemy.processPotionNameGUI(pid, name, data, parameters)
+    if data~=nil then
+        CustomAlchemy.brewPotions(pid, data)
+    else
+        CustomAlchemy.showPotionNameGUI(pid)
+    end
+end
 
+--Event hooks
 function CustomAlchemy.OnServerPostInit()
     CustomAlchemy.loadData()
     CustomAlchemy.createAlchemyContainerRecord()
@@ -590,7 +655,6 @@ function CustomAlchemy.OnPlayerItemUseValidator(eventStatus, pid, refId)
         if not CustomAlchemy.isContainerEmpty(pid) then
             CustomAlchemy.showApparatusGUI(pid)
         end
-
         return customEventHooks.makeEventStatus(false, nil)
     end
 end
@@ -614,34 +678,7 @@ function CustomAlchemy.OnContainer(eventStatus, pid, instanceId, index)
 
     if instanceId == CustomAlchemy.getContainerInstanceId(pid) then
         CustomAlchemy.updateContainerWeight(pid)
-        CustomAlchemy.applyContainerBurden(pid)
-    end
-end
-
-function CustomAlchemy.OnGUIAction(eventStatus, pid, idGui, data)
-    if idGui==CustomAlchemy.getApparatusGUIId() then
-        if data~=nil then
-            local button = tonumber(data)
-
-            CustomAlchemy.handleGUIButton(pid, button)
-        end
-        return customEventHooks.makeEventStatus(false, nil)
-    elseif idGui == CustomAlchemy.getPotionNameGUIId() then
-        if data~=nil then
-            CustomAlchemy.brewPotions(pid, data)
-        else
-            CustomAlchemy.showPotionNameGUI(pid)
-        end
-    end
-end
-
-function CustomAlchemy.handleGUIButton(pid, button)
-    if button == 0 then
-        CustomAlchemy.showPotionNameGUI(pid)
-    elseif button == 1 then
-        CustomAlchemy.addIngredient(pid)
-    elseif button == 2 then
-        CustomAlchemy.cancel(pid)
+        CustomAlchemy.updateContainerBurden(pid)
     end
 end
 
@@ -655,5 +692,3 @@ customEventHooks.registerValidator("OnPlayerItemUse", CustomAlchemy.OnPlayerItem
 
 customEventHooks.registerValidator("ContainerFramework_OnContainer", CustomAlchemy.OnContainerValidator)
 customEventHooks.registerHandler("ContainerFramework_OnContainer", CustomAlchemy.OnContainer)
-
-customEventHooks.registerHandler("OnGUIAction", CustomAlchemy.OnGUIAction)
