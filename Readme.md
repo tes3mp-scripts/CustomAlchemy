@@ -5,6 +5,8 @@ Requires [DataManager](https://github.com/tes3mp-scripts/DataManager) and [Conta
 Most of the formulas are contained in `formulas.lua` for (relatively) easy access.
 
 You can find the configuration file in `data/custom/__config_CustomAlchemy.json`.
+* `progressSkill` wheter to increase player alchemy skill. Requires [LevelingFramework](https://github.com/tes3mp-scripts/LevelingFramework). Default `false`.
+* `disableQuickKeys` wheter to restrict adding aclhemy apparatuses to quick key slots. Requires [QuickKeyCleaner](https://github.com/tes3mp-scripts/QuickKeyCleaner). Default `false`.
 * `menu` is a list of all GUI ids used by customAlchemy. Edit this if some other scripts happen to use the same ones.
 * `fail`
   * `sound` plays when potion brewing is failed.

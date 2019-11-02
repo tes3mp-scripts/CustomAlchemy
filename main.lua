@@ -626,6 +626,11 @@ end
 function CustomAlchemy.OnServerPostInit()
     CustomAlchemy.loadData()
     CustomAlchemy.createAlchemyContainerRecord()
+    if CustomAlchemy.config.disableQuickKeys then
+        for refId, _ in pairs(CustomAlchemy.config.apparatuses) do
+            QuickKeyCleaner.banItem(refId)
+        end
+    end
 end
 
 function CustomAlchemy.OnServerExit(eventStatus)

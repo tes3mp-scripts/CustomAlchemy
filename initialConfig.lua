@@ -1,10 +1,11 @@
 local keyOrder = {
-    "progressSkill","potionEffectTreshold", "maximumIngredientCount",
+    "progressSkill", "disableQuickKeys", "potionEffectTreshold", "maximumIngredientCount",
     "menu", "fail", "success", "burden", "container",
     "apparatuses", "ingredients", "effects"
 }
 local default = {
-    progressSkill = true,
+    progressSkill = false,
+    disableQuickKeys = false,
     ["menu"] = {
         ["apparatusButtons"] = { "Brew", "Add ingredient", "Cancel" },
         ["nameLabel"] = "Name your potions:"
