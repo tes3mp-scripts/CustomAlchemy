@@ -697,3 +697,5 @@ customEventHooks.registerValidator("OnPlayerItemUse", CustomAlchemy.OnPlayerItem
 
 customEventHooks.registerValidator("ContainerFramework_OnContainer", CustomAlchemy.OnContainerValidator)
 customEventHooks.registerHandler("ContainerFramework_OnContainer", CustomAlchemy.OnContainer)
+
+return CustomAlchemy
