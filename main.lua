@@ -2,7 +2,6 @@ CustomAlchemy = {}
 
 local Formulas = require("custom.CustomAlchemy.formulas")
 
-
 CustomAlchemy.scriptName = "CustomAlchemy"
 
 CustomAlchemy.initialConfig = require("custom.CustomAlchemy.initialConfig")
@@ -15,11 +14,7 @@ CustomAlchemy.config = DataManager.loadConfiguration(
 tableHelper.fixNumericalKeys(CustomAlchemy.config)
 
 
-CustomAlchemy.defaultData = {
-    instances = {},
-    weight = {},
-    burdenId = {}
-}
+CustomAlchemy.initialData = require("custom.CustomAlchemy.initialData")
 
 CustomAlchemy.uniqueIndexCache = {}
 
@@ -27,11 +22,90 @@ CustomAlchemy.skillId = tes3mp.GetSkillId("Alchemy")
 
 
 function CustomAlchemy.loadData()
-    CustomAlchemy.data = DataManager.loadData(CustomAlchemy.scriptName, CustomAlchemy.defaultData)
+    CustomAlchemy.data = DataManager.loadData(
+        CustomAlchemy.scriptName,
+        CustomAlchemy.initialData.default,
+        CustomAlchemy.initialData.keyOrder
+    )
 end
 
 function CustomAlchemy.saveData()
     DataManager.saveData(CustomAlchemy.scriptName, CustomAlchemy.data)
+end
+
+function CustomAlchemy.importESPs()
+    if espParser == nil then
+        return
+    end
+
+    -- Load esp files if necessary
+    local loaded = espParser.isLoaded()
+    if not loaded then
+        espParser.loadFiles()
+    end
+
+    -- Parse ingredients
+    for _, record in pairs(espParser.getAllRecords("INGR")) do
+        local ingredient = {}
+        local refId = ""
+        for _, subRecord in pairs(record.subRecords) do
+            local data = subRecord.data
+            if data ~= nil then
+                if subRecord.name == "NAME" then
+                    refId = espParser.getValue(data, "s", 1):lower()
+                elseif subRecord.name == "IRDT" then
+                    local pos = 1
+                    ingredient.weight = espParser.getValue(data, "f", pos)
+                    pos = pos + 4
+                    pos = pos + 4 --skip value
+                    ingredient.effects = {}
+                    for i = 1, 4 do
+                        ingredient.effects[i] = espParser.getValue(data, "i", pos)
+                        pos = pos + 4
+                    end
+                    ingredient.skills = {}
+                    for i = 1, 4 do
+                        ingredient.skills[i] = espParser.getValue(data, "i", pos)
+                        pos = pos + 4
+                    end
+                    ingredient.attributes = {}
+                    for i = 1, 4 do
+                        ingredient.attributes[i] = espParser.getValue(data, "i", pos)
+                        pos = pos + 4
+                    end
+                end
+            end
+        end
+        CustomAlchemy.data.ingredients[refId] = ingredient
+    end
+
+    -- Parse apparatuses
+    for _, record in pairs(espParser.getAllRecords("APPA")) do
+        local apparatus = {}
+        local refId = ""
+        for _, subRecord in pairs(record.subRecords) do
+            local data = subRecord.data
+            if data ~= nil then
+                if subRecord.name == "NAME" then
+                    refId = espParser.getValue(data, "s", 1):lower()
+                elseif subRecord.name == "AADT" then
+                    local pos = 1
+                    apparatus.type = espParser.getValue(data, "I", pos)
+                    pos = pos + 4
+                    apparatus.quality = espParser.getValue(data, "f", pos)
+                end
+            end
+        end
+        CustomAlchemy.data.apparatuses[refId] = apparatus
+    end
+    
+    -- Clean after if expected
+    if not loaded then
+        espParser.unloadFiles()
+    end
+
+    -- Save freshly loaded classes
+    DataManager.saveData(CustomAlchemy.scriptName, CustomAlchemy.data, CustomAlchemy.initialData.keyOrder)
 end
 
 
@@ -108,7 +182,7 @@ function CustomAlchemy.updateContainerWeight(pid)
     local weight = 0
     for _, item in pairs(inventory) do
         if CustomAlchemy.isIngredient(item.refId) then
-            weight = weight + CustomAlchemy.config.ingredients[item.refId].weight * item.count
+            weight = weight + CustomAlchemy.data.ingredients[item.refId].weight * item.count
         end
     end
 
@@ -305,23 +379,24 @@ end
 
 
 function CustomAlchemy.isApparatus(refId)
-    return CustomAlchemy.config.apparatuses[refId] ~= nil
+    return CustomAlchemy.data.apparatuses[refId] ~= nil
 end
 
 function CustomAlchemy.isMortar(refId)
-    return CustomAlchemy.config.apparatuses[refId] ~= nil and CustomAlchemy.config.apparatuses[refId].type == 1
+    return CustomAlchemy.data.apparatuses[refId] ~= nil and CustomAlchemy.data.apparatuses[refId].type == 1
 end
 
 function CustomAlchemy.getApparatus(refId)
-    return CustomAlchemy.config.apparatuses[refId]
+    return CustomAlchemy.data.apparatuses[refId]
 end
 
 function CustomAlchemy.isIngredient(refId)
-    return CustomAlchemy.config.ingredients[refId] ~= nil
+    return CustomAlchemy.data.ingredients[refId] ~= nil
 end
 
 function CustomAlchemy.determineApparatuses(pid)
-    local player_apparatuses = {0, 0, 0, 0}
+    local player_apparatuses = {0, 0, 0}
+    player_apparatuses[0] = 0
 
     local inventory = Players[pid].data.inventory
     for _, item in pairs(inventory) do
@@ -408,7 +483,7 @@ end
 function CustomAlchemy.brewPotions(pid, name)
     local player_apparatuses = CustomAlchemy.determineApparatuses(pid)
     --check if the player has a mortar
-    if player_apparatuses[1] == 0 then
+    if player_apparatuses[0] == 0 then
         CustomAlchemy.failure(pid, CustomAlchemy.config.fail.messageMortarRequired)
         CustomAlchemy.cancel(pid)
         return
@@ -429,7 +504,7 @@ function CustomAlchemy.brewPotions(pid, name)
                 min_ingredient_count = math.min(min_ingredient_count, item.count)
             end
 
-            local ingredient = CustomAlchemy.config.ingredients[item.refId]
+            local ingredient = CustomAlchemy.data.ingredients[item.refId]
 
             table.insert(potion_ingredients, ingredient)
 
@@ -503,10 +578,10 @@ function CustomAlchemy.brewPotions(pid, name)
                     effectId = combinedId
                 end
 
-                local effectData = CustomAlchemy.config.effects[effectId]
+                local effectData = CustomAlchemy.data.effects[effectId]
 
                 if effectData == nil then
-
+                    effectData = CustomAlchemy.data.effects[tostring(effectId)]
                 end
 
                 local magnitude = Formulas.getEffectMagnitude(status, effectData)
@@ -625,9 +700,12 @@ end
 --Event hooks
 function CustomAlchemy.OnServerPostInit()
     CustomAlchemy.loadData()
+    if CustomAlchemy.config.importESPs then
+        CustomAlchemy.importESPs()
+    end
     CustomAlchemy.createAlchemyContainerRecord()
     if CustomAlchemy.config.disableQuickKeys then
-        for refId, _ in pairs(CustomAlchemy.config.apparatuses) do
+        for refId, _ in pairs(CustomAlchemy.data.apparatuses) do
             QuickKeyCleaner.banItem(refId)
         end
     end
@@ -697,5 +775,11 @@ customEventHooks.registerValidator("OnPlayerItemUse", CustomAlchemy.OnPlayerItem
 
 customEventHooks.registerValidator("ContainerFramework_OnContainer", CustomAlchemy.OnContainerValidator)
 customEventHooks.registerHandler("ContainerFramework_OnContainer", CustomAlchemy.OnContainer)
+
+customCommandHooks.registerCommand("caimportesps", function(pid, cmd)
+    CustomAlchemy.importESPs()
+    tes3mp.SendMessage(pid, "Imported ESPs!")
+end)
+customCommandHooks.setRankRequirment("caimportesps", CustomAlchemy.config.cmdRank)
 
 return CustomAlchemy

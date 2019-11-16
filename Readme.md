@@ -1,10 +1,12 @@
 **customAlchemy** reimpliments vanilla alchemy mechanics to allow batch potion brewing, server side customization and improvement of server performance.
 
-Requires [DataManager](https://github.com/tes3mp-scripts/DataManager), [GuiFramework](https://github.com/tes3mp-scripts/GuiFramework) and [ContainerFramework](https://github.com/tes3mp-scripts/ContainerFramework)!
+Requires [DataManager](https://github.com/tes3mp-scripts/DataManager), [GuiFramework](https://github.com/tes3mp-scripts/GuiFramework), [ContainerFramework](https://github.com/tes3mp-scripts/ContainerFramework) and optionally [QuickKeyCleaner](https://github.com/tes3mp-scripts/QuickKeyCleaner), [espParser](https://github.com/JakobCh/tes3mp_scripts/tree/master/espParser)!
 
 Most of the formulas are contained in `formulas.lua` for (relatively) easy access.
 
 You can find the configuration file in `data/custom/__config_CustomAlchemy.json`.
+* `importESPs` whether to parse ESP files on startup. Setting this to `true` will significantly increase your server starting times and RAM usage overall. It is recommended to use the `caimportesps` command when necessary. Default `false`.
+* `cmdRank` rank required to use the `caimportesps` command. Default `2` (admin).
 * `progressSkill` wheter to increase player alchemy skill. Requires [LevelingFramework](https://github.com/tes3mp-scripts/LevelingFramework). Default `false`.
 * `disableQuickKeys` wheter to restrict adding aclhemy apparatuses to quick key slots. Requires [QuickKeyCleaner](https://github.com/tes3mp-scripts/QuickKeyCleaner). Default `false`.
 * `menu` is a list of all GUI ids used by customAlchemy. Edit this if some other scripts happen to use the same ones.
@@ -29,6 +31,9 @@ You can find the configuration file in `data/custom/__config_CustomAlchemy.json`
 * `apparatuses` necessary data about all the alchemy apparatuses used. Can be used to make custom alchemy tools.
 * `ingredients` necessary data about all the ingredients. By default only contains ingredients from the original game and the expansions, has to be edited to accomodate for mods. Can also be used to make custom ingredients. For information about numeric values consult the table below.
 * `effects` necessary data for magical effects. For information about numeric values consult the table below.
+
+Commands:
+* `caimportesps` load ingredient and apparatus data from ESPs
 
 Potion effects
 ---

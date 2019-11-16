@@ -1,8 +1,8 @@
 local Formulas = {
-    MORTAR = 1,
-    ALEMBIC = 2,
-    CALCINATOR = 3,
-    RETORT = 4,
+    MORTAR = 0,
+    ALEMBIC = 1,
+    CALCINATOR = 2,
+    RETORT = 3,
 
     fPotionStrengthMult = 0.5,
     fPotionT1DurMult = 0.5,
