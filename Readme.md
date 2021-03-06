@@ -1,6 +1,6 @@
 **customAlchemy** reimpliments vanilla alchemy mechanics to allow batch potion brewing, server side customization and improvement of server performance.
 
-Requires [DataManager](https://github.com/tes3mp-scripts/DataManager), [GuiFramework](https://github.com/tes3mp-scripts/GuiFramework), [ContainerFramework](https://github.com/tes3mp-scripts/ContainerFramework) and optionally [QuickKeyCleaner](https://github.com/tes3mp-scripts/QuickKeyCleaner), [espParser](https://github.com/JakobCh/tes3mp_scripts/tree/master/espParser)!
+Requires [DataManager](https://github.com/tes3mp-scripts/DataManager), [GuiFramework](https://github.com/tes3mp-scripts/GuiFramework), [ContainerFramework](https://github.com/tes3mp-scripts/ContainerFramework), [LevelingFramework](https://github.com/tes3mp-scripts/LevelingFramework) and optionally [QuickKeyCleaner](https://github.com/tes3mp-scripts/QuickKeyCleaner), [espParser](https://github.com/JakobCh/tes3mp_scripts/tree/master/espParser)!
 
 Most of the formulas are contained in `formulas.lua` for (relatively) easy access.
 
