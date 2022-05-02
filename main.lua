@@ -780,6 +780,6 @@ customCommandHooks.registerCommand("caimportesps", function(pid, cmd)
     CustomAlchemy.importESPs()
     tes3mp.SendMessage(pid, "Imported ESPs!")
 end)
-customCommandHooks.setRankRequirment("caimportesps", CustomAlchemy.config.cmdRank)
+customCommandHooks.setRankRequirement("caimportesps", CustomAlchemy.config.cmdRank)
 
 return CustomAlchemy
